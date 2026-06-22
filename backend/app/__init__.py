@@ -24,6 +24,9 @@ def create_app():
     from app.shelves.routes import shelves_bp
     app.register_blueprint(shelves_bp, url_prefix="/api/shelves")
 
+    from app.lendings.routes import lendings_bp
+    app.register_blueprint(lendings_bp, url_prefix="/api/lendings")
+
     @app.errorhandler(404)
     def not_found(e):
         return jsonify(error="Not found"), 404
