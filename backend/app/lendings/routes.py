@@ -4,8 +4,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import IntegrityError
 
-from app.extensions import db
-from app.models import Lending, Book, User
+from app.extensions import db, socketio
+from app.models import Lending, Book, User, ActivityType
+from app.activity_log import log_activity
 
 lendings_bp = Blueprint("lendings", __name__)
 
@@ -68,7 +69,21 @@ def lend_book():
         db.session.rollback()
         return jsonify(error="This book is already lent out"), 409
 
-    return jsonify(_serialize_lending(lending)), 201
+    payload = _serialize_lending(lending)
+
+    log_activity(
+        actor_id=user_id,
+        type_=ActivityType.BOOK_LENT,
+        message=f'Lent "{book.title}" to {borrower.email}',
+        recipient_ids=[user_id, borrower.id],
+        book_id=book.id,
+    )
+
+    # Live update (item 27): the borrower's "Borrowed from others" view
+    # updates immediately, no refresh needed.
+    socketio.emit("lending:created", payload, room=f"user:{borrower.id}")
+
+    return jsonify(payload), 201
 
 
 @lendings_bp.route("/borrowed", methods=["GET"])
@@ -104,4 +119,20 @@ def return_book(lending_id):
 
     lending.returned_at = datetime.utcnow()
     db.session.commit()
+
+    log_activity(
+        actor_id=user_id,
+        type_=ActivityType.BOOK_RETURNED,
+        message=f'"{lending.book.title}" was returned',
+        recipient_ids=[lending.lender_id, lending.borrower_id],
+        book_id=lending.book_id,
+    )
+
+    # Live update (item 27): the borrower's view drops it immediately.
+    socketio.emit(
+        "lending:returned",
+        {"id": lending.id},
+        room=f"user:{lending.borrower_id}",
+    )
+
     return jsonify(_serialize_lending(lending))

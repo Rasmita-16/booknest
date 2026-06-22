@@ -4,7 +4,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.extensions import db
-from app.models import Book, BookStatus
+from app.models import Book, BookStatus, ActivityType
+from app.activity_log import log_activity
 
 books_bp = Blueprint("books", __name__)
 
@@ -93,6 +94,14 @@ def create_book():
     db.session.add(book)
     db.session.commit()
 
+    log_activity(
+        actor_id=user_id,
+        type_=ActivityType.BOOK_ADDED,
+        message=f'Added "{book.title}" to your library',
+        recipient_ids=[user_id],
+        book_id=book.id,
+    )
+
     return jsonify(_serialize_book(book)), 201
 
 
@@ -163,6 +172,7 @@ def update_book(book_id):
         return jsonify(error="Book not found"), 404
 
     data = request.get_json(silent=True) or {}
+    old_status = book.status
 
     if "title" in data:
         title = (data.get("title") or "").strip()
@@ -226,6 +236,16 @@ def update_book(book_id):
             book.finished_at = None
 
     db.session.commit()
+
+    if book.status != old_status:
+        log_activity(
+            actor_id=user_id,
+            type_=ActivityType.BOOK_STATUS_CHANGED,
+            message=f'"{book.title}" changed to {book.status.value}',
+            recipient_ids=[user_id],
+            book_id=book.id,
+        )
+
     return jsonify(_serialize_book(book))
 
 

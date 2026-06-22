@@ -1,8 +1,10 @@
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from app.extensions import db
-from app.models import Shelf, ShelfBook, ShelfShare, ShelfRole, Book, User
+from app.extensions import db, socketio
+from app.models import Shelf, ShelfBook, ShelfShare, ShelfRole, Book, User, ActivityType
+from app.activity_log import log_activity
 
 shelves_bp = Blueprint("shelves", __name__)
 
@@ -146,6 +148,15 @@ def add_book_to_shelf(shelf_id):
 
     db.session.add(ShelfBook(shelf_id=shelf.id, book_id=book.id))
     db.session.commit()
+
+    # Live update (item 28): every collaborator currently viewing this
+    # shelf sees the new book appear immediately, no refresh.
+    socketio.emit(
+        "shelf:book_added",
+        {"shelf_id": shelf.id, "book": _serialize_book_brief(book)},
+        room=f"shelf:{shelf.id}",
+    )
+
     return jsonify(message="Book added to shelf"), 201
 
 
@@ -167,6 +178,13 @@ def remove_book_from_shelf(shelf_id, book_id):
 
     db.session.delete(link)
     db.session.commit()
+
+    socketio.emit(
+        "shelf:book_removed",
+        {"shelf_id": shelf_id, "book_id": book_id},
+        room=f"shelf:{shelf_id}",
+    )
+
     return jsonify(message="Book removed from shelf"), 200
 
 
@@ -203,6 +221,14 @@ def share_shelf(shelf_id):
     db.session.add(ShelfShare(shelf_id=shelf.id, user_id=target_user.id, role=role))
     db.session.commit()
 
+    log_activity(
+        actor_id=user_id,
+        type_=ActivityType.SHELF_SHARED,
+        message=f'Shared "{shelf.name}" with {target_user.email} as {role.value}',
+        recipient_ids=[user_id, target_user.id],
+        shelf_id=shelf.id,
+    )
+
     return jsonify(message=f"Shelf shared with {target_user.email} as {role.value}"), 201
 
 
@@ -229,6 +255,16 @@ def update_share_role(shelf_id, target_user_id):
 
     share.role = new_role
     db.session.commit()
+
+    target_user = User.query.get(target_user_id)
+    log_activity(
+        actor_id=user_id,
+        type_=ActivityType.SHELF_ROLE_CHANGED,
+        message=f'Changed {target_user.email if target_user else "a collaborator"}\'s role on "{shelf.name}" to {new_role.value}',
+        recipient_ids=[user_id, target_user_id],
+        shelf_id=shelf.id,
+    )
+
     return jsonify(message="Role updated"), 200
 
 
@@ -247,6 +283,16 @@ def remove_collaborator(shelf_id, target_user_id):
     if not share:
         return jsonify(error="That user doesn't have access to this shelf"), 404
 
+    target_user = User.query.get(target_user_id)
     db.session.delete(share)
     db.session.commit()
+
+    log_activity(
+        actor_id=user_id,
+        type_=ActivityType.SHELF_COLLABORATOR_REMOVED,
+        message=f'Removed {target_user.email if target_user else "a collaborator"} from "{shelf.name}"',
+        recipient_ids=[user_id, target_user_id],
+        shelf_id=shelf.id,
+    )
+
     return jsonify(message="Collaborator removed"), 200

@@ -27,6 +27,14 @@ def create_app():
     from app.lendings.routes import lendings_bp
     app.register_blueprint(lendings_bp, url_prefix="/api/lendings")
 
+    from app.dashboard.routes import dashboard_bp
+    app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
+
+    # Importing this registers the @socketio.on(...) connect/disconnect
+    # handlers against the shared socketio instance — it has no routes
+    # of its own, so there's no register_blueprint call for it.
+    from app import sockets  # noqa: F401
+
     @app.errorhandler(404)
     def not_found(e):
         return jsonify(error="Not found"), 404
