@@ -18,6 +18,12 @@ def create_app():
     from app.auth.routes import auth_bp
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
 
+    from app.books.routes import books_bp
+    app.register_blueprint(books_bp, url_prefix="/api/books")
+
+    from app.shelves.routes import shelves_bp
+    app.register_blueprint(shelves_bp, url_prefix="/api/shelves")
+
     @app.errorhandler(404)
     def not_found(e):
         return jsonify(error="Not found"), 404
