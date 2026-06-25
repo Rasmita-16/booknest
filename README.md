@@ -29,9 +29,13 @@ cd backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1        # Mac/Linux: source venv/bin/activate
 pip install -r requirements.txt
-copy .env.example .env             # edit values if needed
-# create a Postgres database/user matching DATABASE_URL in .env
-$env:FLASK_APP = "run.py"
+copy .env.example .env             # Mac/Linux: cp .env.example .env
+
+# create the database (matches the default DATABASE_URL above):
+psql -U postgres -c "CREATE USER booknest WITH PASSWORD 'booknest';"
+psql -U postgres -c "CREATE DATABASE booknest OWNER booknest;"
+
+$env:FLASK_APP = "run.py"          # Mac/Linux: export FLASK_APP=run.py
 flask db upgrade
 python seed.py                     # creates demo users/data
 python run.py                      # serves on http://localhost:5000
@@ -41,16 +45,9 @@ python run.py                      # serves on http://localhost:5000
 ```powershell
 cd frontend
 npm install
-copy .env.example .env.local       # or create manually, see below
+copy .env.example .env.local       # Mac/Linux: cp .env.example .env.local
 npm run dev                        # serves on http://localhost:3000
 ```
-
-`.env.local` needs:
-
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-
-NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
-
 ### Demo accounts (after running `seed.py`)
 - `alice@example.com` / `password123` — owns the demo shelf and books
 - `bob@example.com` / `password123` — editor on the shared shelf
