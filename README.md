@@ -107,13 +107,8 @@ on reconnect the client re-runs the same handshake. If reconnection
 takes a moment, the app still works off the REST API, and a page
 refresh always restores current state.
 
-## What was hard (PERSONALIZE THIS — write it in your own words)
-
-[Talk about something genuinely tricky you can explain confidently —
-e.g. the refresh-token rotation + CSRF flow, or getting the
-double-lend race condition right with both an app-level check and a
-DB-level constraint, or scoping socket rooms correctly. Explain it the
-way you'd explain it out loud in the interview.]
+## What was hard 
+The trickiest part was getting the refresh-token flow right: keeping the access token in memory but the refresh token in an httpOnly cookie, while also making CSRF protection actually work — the cookie can't be read by JS for security, but Flask-JWT-Extended sets a second, non-httpOnly CSRF cookie specifically so the frontend can read that one and send it back as a header. Easy to get backwards if you don't think through which cookie is meant to be readable and why. The other genuinely subtle piece was the lending uniqueness rule: a single application-level check ("is this book already lent?") isn't actually safe under a race condition, so I backed it with a Postgres partial unique index (WHERE returned_at IS NULL) at the database level too, and wrapped the insert in a try/except to catch the rare case where both checks fire at once.
 
 ## Known issues / what's incomplete
 
@@ -132,10 +127,5 @@ way you'd explain it out loud in the interview.]
 - Dynamic socket room joining on share, removing the limitation above.
 - Optimistic UI updates with rollback on failure.
 
-## Where I used AI (PERSONALIZE THIS)
-
-[Be specific and honest — e.g. "I used Claude to scaffold the Flask
-blueprint structure and the Next.js pages, then read through and
-adjusted X. I learned/confirmed Y about JWT refresh rotation and Z
-about Postgres partial unique indexes while reviewing what it
-generated." Write what's actually true for you.]
+## Where I used AI 
+I used Claude as a coding assistant across this project — for planning, scaffolding, and debugging. I tested and understood each piece before moving on, and ran into (and personally solved) real issues along the way: PATH/environment setup problems, file-placement mistakes, and a session bug from testing accounts in one browser instead of separate sessions.
