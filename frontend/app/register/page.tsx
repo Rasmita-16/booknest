@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "../../lib/auth-context";
 import { ApiError } from "../../lib/api";
 
-export default function SignupPage() {
+export default function RegisterPage() {
   const { signup } = useAuth();
   const router = useRouter();
 
@@ -68,6 +68,7 @@ export default function SignupPage() {
               id="name"
               type="text"
               required
+              autoComplete="off"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
@@ -113,7 +114,7 @@ export default function SignupPage() {
             disabled={submitting}
             className="w-full rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Creating account…" : "Regist"}
+            {submitting ? "Creating account…" : "Register"}
           </button>
         </form>
 
