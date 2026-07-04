@@ -68,7 +68,6 @@ export default function RegisterPage() {
               id="name"
               type="text"
               required
-              autoComplete="off"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
