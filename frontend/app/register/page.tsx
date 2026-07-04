@@ -113,7 +113,7 @@ export default function SignupPage() {
             disabled={submitting}
             className="w-full rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Creating account…" : "Sign up"}
+            {submitting ? "Creating account…" : "Regist"}
           </button>
         </form>
 
